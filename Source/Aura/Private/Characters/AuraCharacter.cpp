@@ -2,9 +2,12 @@
 
 
 #include "Characters/AuraCharacter.h"
+#include "AbilitySystem/AuraAbilitySystemComponent.h"
+#include "AbilitySystem/AuraAttributeSet.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Player/AuraPlayerState.h"
 
 AAuraCharacter::AAuraCharacter()
 {
@@ -22,6 +25,22 @@ AAuraCharacter::AAuraCharacter()
 	bUseControllerRotationYaw = false;
 }
 
+void AAuraCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	// Init ability actor info for the server
+	InitAbilityActorInfo();
+}
+
+void AAuraCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	// Init ability actor info for the client
+	InitAbilityActorInfo();
+}
+
 void AAuraCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -31,4 +50,18 @@ void AAuraCharacter::BeginPlay()
 	characterMovement->RotationRate = FRotator(0.f, 400.f, 0.f);
 	characterMovement->bConstrainToPlane = true;
 	characterMovement->bSnapToPlaneAtStart = true;
+}
+
+void AAuraCharacter::InitAbilityActorInfo()
+{
+	auto playerState = GetPlayerState<AAuraPlayerState>();
+	if (playerState == nullptr)
+	{
+		check(playerState);
+		return;
+	}
+
+	AbilitySystemComponent = playerState->GetAbilitySystemComponent();
+	AbilitySystemComponent->InitAbilityActorInfo(playerState, this);
+	AttributeSet = playerState->GetAttributeSet();
 }

@@ -1,16 +1,25 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "Characters/EnemyCharacter.h"
 #include "Aura/Aura.h"
+#include "AbilitySystem/AuraAbilitySystemComponent.h"
+#include "AbilitySystem/AuraAttributeSet.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
+	AbilitySystemComponent = CreateDefaultSubobject<UAuraAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	AttributeSet = CreateDefaultSubobject<UAuraAttributeSet>(TEXT("AttributeSet"));
 }
 
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 }
 
 void AEnemyCharacter::HighlightActor()
