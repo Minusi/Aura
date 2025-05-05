@@ -2,14 +2,17 @@
 
 
 #include "AbilitySystem/AuraAttributeSet.h"
+#include "GameplayEffectExtension.h"
+#include "GameFramework/Character.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 UAuraAttributeSet::UAuraAttributeSet()
 {
 	InitHealth(50);
 	InitMaxHealth(100.f);
-	InitMana(50.f);
-	InitMaxMana(50.f);
+	InitMana(25.f);
+	InitMaxMana(100.f);
 }
 
 void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -20,6 +23,64 @@ void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, Mana, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet, MaxMana, COND_None, REPNOTIFY_Always);
+}
+
+void UAuraAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
+{
+	Super::PreAttributeChange(Attribute, NewValue);
+
+	if (Attribute == GetHealthAttribute())
+	{
+		NewValue = FMath::Clamp<float>(NewValue, 0.f, GetMaxHealth());
+	}
+	else if (Attribute == GetMaxHealthAttribute())
+	{
+		NewValue = FMath::Clamp<float>(NewValue, 0.f, FLT_MAX);
+	}
+	else if (Attribute == GetManaAttribute())
+	{
+		NewValue = FMath::Clamp<float>(NewValue, 0.f, GetMaxMana());
+	}
+	else if (Attribute == GetMaxManaAttribute())
+	{
+		NewValue = FMath::Clamp<float>(NewValue, 0.f, FLT_MAX);
+	}
+}
+
+void UAuraAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
+{
+	Super::PostGameplayEffectExecute(Data);
+
+	FEffectProperties properties;
+	SetEffectProperties(Data, properties);
+
+
+	//if (Attribute == GetHealthAttribute())
+	//{
+	//	const float NewHealth = GetHealth();
+	//	const float MaxHealth = GetMaxHealth();
+	//	if (NewHealth > MaxHealth)
+	//	{
+	//		SetHealth(MaxHealth);
+	//	}
+	//	else if (NewHealth < 0.f)
+	//	{
+	//		SetHealth(0.f);
+	//	}
+	//}
+	//else if (Attribute == GetManaAttribute())
+	//{
+	//	const float NewMana = GetMana();
+	//	const float MaxMana = GetMaxMana();
+	//	if (NewMana > MaxMana)
+	//	{
+	//		SetMana(MaxMana);
+	//	}
+	//	else if (NewMana < 0.f)
+	//	{
+	//		SetMana(0.f);
+	//	}
+	//}
 }
 
 void UAuraAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth) const
@@ -40,4 +101,39 @@ void UAuraAttributeSet::OnRep_Mana(const FGameplayAttributeData& OldMana) const
 void UAuraAttributeSet::OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) const
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UAuraAttributeSet, MaxMana, OldMaxMana);
+}
+
+void UAuraAttributeSet::SetEffectProperties(const FGameplayEffectModCallbackData& Data, FEffectProperties& Properties) const
+{
+	const FGameplayAttribute& Attribute = Data.EvaluatedData.Attribute;
+
+	Properties.EffectContextHandle = Data.EffectSpec.GetContext();
+	Properties.SourceASC = Properties.EffectContextHandle.GetOriginalInstigatorAbilitySystemComponent();
+
+	if (IsValid(Properties.SourceASC) 
+		&& Properties.SourceASC->AbilityActorInfo.IsValid() 
+		&& Properties.SourceASC->AbilityActorInfo->AvatarActor.IsValid())
+	{
+		Properties.SourceAvartarActor = Properties.SourceASC->AbilityActorInfo->AvatarActor.Get();
+		Properties.SourceController = Properties.SourceASC->AbilityActorInfo->PlayerController.Get();
+		if (Properties.SourceController == nullptr && Properties.SourceAvartarActor)
+		{
+			if (auto pawn = Cast<APawn>(Properties.SourceAvartarActor))
+			{
+				Properties.SourceController = Cast<APlayerController>(pawn->GetController());
+			}
+		}
+		if (Properties.SourceController)
+		{
+			Properties.SourceCharacter = Cast<ACharacter>(Properties.SourceController->GetPawn());
+		}
+	}
+
+	if (Data.Target.AbilityActorInfo.IsValid() && Data.Target.AbilityActorInfo->AvatarActor.IsValid())
+	{
+		Properties.TargetAvartarActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
+		Properties.TargetController = Data.Target.AbilityActorInfo->PlayerController.Get();
+		Properties.TargetCharacter = Cast<ACharacter>(Properties.TargetAvartarActor);
+		Properties.TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Properties.TargetAvartarActor);
+	}
 }
