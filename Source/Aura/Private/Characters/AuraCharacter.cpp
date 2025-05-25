@@ -33,6 +33,7 @@ void AAuraCharacter::PossessedBy(AController* NewController)
 
 	// Init ability actor info for the server
 	InitAbilityActorInfo();
+	SetStartupAbilities();
 }
 
 void AAuraCharacter::OnRep_PlayerState()
@@ -41,6 +42,14 @@ void AAuraCharacter::OnRep_PlayerState()
 
 	// Init ability actor info for the client
 	InitAbilityActorInfo();
+}
+
+int32 AAuraCharacter::GetPlayerLevel() const
+{
+	auto playerState = GetPlayerState<AAuraPlayerState>();
+	check(playerState);
+
+	return playerState->GetPlayerLevel();
 }
 
 void AAuraCharacter::BeginPlay()
@@ -65,6 +74,9 @@ void AAuraCharacter::InitAbilityActorInfo()
 
 	AbilitySystemComponent = playerState->GetAbilitySystemComponent();
 	AbilitySystemComponent->InitAbilityActorInfo(playerState, this);
+
+	auto auraAbilitySystemComponent = Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent);
+	auraAbilitySystemComponent->SetAbilityActorInfo();
 	AttributeSet = playerState->GetAttributeSet();
 
 	auto auraPlayerContoller = Cast<AAuraPlayerController>(GetController());
@@ -75,4 +87,6 @@ void AAuraCharacter::InitAbilityActorInfo()
 			auraHUD->InitOverlay(auraPlayerContoller, playerState, AbilitySystemComponent, AttributeSet);
 		}
 	}
+
+	InitializeDefaultAttributes();
 }
