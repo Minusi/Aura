@@ -14,8 +14,8 @@ void UAuraAbilitySystemComponent::SetStartupAbilities(const TArray<TSubclassOf<U
 	for (auto ability : StartupAbilities)
 	{
 		auto abilitySpec = FGameplayAbilitySpec(ability, 1);
-		GiveAbility(abilitySpec);
-
+		//GiveAbility(abilitySpec);
+		GiveAbilityAndActivateOnce(abilitySpec);
 	}
 }
 
